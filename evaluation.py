@@ -27,14 +27,14 @@ def read_gt(bin_path='binary',rank_path='ranking'):
     gt_bin = {}
     gt_rank = {}
 
-    for fname in os.listdir(bin_path):
+    for fname in ['test.jsonl','test_eng.jsonl']:
         gt_bin[fname] = {}
         with open(os.path.join(bin_path,fname),'r') as f:
             for line in f:
                 example = json.loads(line)
                 gt_bin[fname][example['id']] = int(example['label'])
 
-    for fname in os.listdir(rank_path):
+    for fname in ['test.jsonl','test_eng.jsonl']:
         gt_rank[fname] = {}
         with open(os.path.join(rank_path, fname),'r') as f:
             for line in f:
@@ -47,8 +47,8 @@ def get_prediction(examples,keys,task):
     try:
         for k in keys:
             predictions.append(examples[task][k])
-    except:
-        raise Exception(f'Cannot compute metrics for task {task}, error in prediction keys.')
+    except Exception as e:
+        raise Exception(f'Cannot compute metrics for task {task}, error in prediction keys. {e}')
     return predictions
 
 
@@ -62,6 +62,9 @@ if __name__ == '__main__':
     parser.add_argument('--submission', required=True)
     args = parser.parse_args()
 
+    binarytopred = {'test.jsonl': 'binary.jsonl', 'test_eng.jsonl': 'binary_eng.jsonl'}
+    rankingtopred = {'test.jsonl': 'ranking.jsonl', 'test_eng.jsonl': 'ranking_eng.jsonl'}
+
     submission_file = args.submission
     submission_name = submission_file.split('.')[0]
     examples = read_submission(submission_file)
@@ -73,11 +76,12 @@ if __name__ == '__main__':
         for k in gt_bin[task]:
             labels.append(gt_bin[task][k])
             keys.append(k)
-        if task in examples:
+        task_name = binarytopred[task]
+        if task_name in examples:
             try:
-                predictions = get_prediction(examples,keys,task)
+                predictions = get_prediction(examples,keys,task_name)
                 precision,recall,f1,_ = precision_recall_fscore_support(labels, predictions, labels=[0,1])
-                results[task] = {
+                results[task_name] = {
                     'class 0': {
                         'precision': precision[0],
                         'recall': recall[0],
@@ -106,11 +110,12 @@ if __name__ == '__main__':
         for k in gt_rank[task]:
             scores.append(gt_rank[task][k])
             keys.append(k)
-        if task in examples:
+        task_name = rankingtopred[task]
+        if task_name in examples:
             try:
-                predictions = get_prediction(examples,keys,task)
+                predictions = get_prediction(examples,keys,task_name)
                 spearman, pvalue = spearmanr(scores, predictions)
-                results[task] = {
+                results[task_name] = {
                     'spearman': spearman,
                     'pvalue': pvalue
                 }
